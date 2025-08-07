@@ -6,18 +6,18 @@ const ejercicios = [
   { fase: 'Calentamiento', nombre: 'Círculos de brazos atrás', tiempo: 30, tipo: 'calentamiento' },
   { fase: 'Calentamiento', nombre: 'Cruces de brazos dinámicos', tiempo: 30, tipo: 'calentamiento' },
   
-  // FUERZA
-  { fase: 'Fuerza', nombre: 'Press militar con mancuernas', tiempo: 45, tipo: 'fuerza' },
+  // FUERZA (ahora por repeticiones y series)
+  { fase: 'Fuerza', nombre: 'Press militar con mancuernas', repeticiones: 12, series: 3, tipo: 'fuerza' },
   { fase: 'Fuerza', nombre: 'Descanso', tiempo: 30, tipo: 'descanso' },
-  { fase: 'Fuerza', nombre: 'Elevaciones laterales', tiempo: 45, tipo: 'fuerza' },
+  { fase: 'Fuerza', nombre: 'Elevaciones laterales', repeticiones: 12, series: 3, tipo: 'fuerza' },
   { fase: 'Fuerza', nombre: 'Descanso', tiempo: 30, tipo: 'descanso' },
-  { fase: 'Fuerza', nombre: 'Elevaciones frontales', tiempo: 45, tipo: 'fuerza' },
+  { fase: 'Fuerza', nombre: 'Elevaciones frontales', repeticiones: 12, series: 3, tipo: 'fuerza' },
   { fase: 'Fuerza', nombre: 'Descanso', tiempo: 30, tipo: 'descanso' },
-  { fase: 'Fuerza', nombre: 'Pájaros (deltoides posterior)', tiempo: 45, tipo: 'fuerza' },
+  { fase: 'Fuerza', nombre: 'Pájaros (deltoides posterior)', repeticiones: 12, series: 3, tipo: 'fuerza' },
   { fase: 'Fuerza', nombre: 'Descanso', tiempo: 30, tipo: 'descanso' },
-  { fase: 'Fuerza', nombre: 'Press Arnold', tiempo: 45, tipo: 'fuerza' },
+  { fase: 'Fuerza', nombre: 'Press Arnold', repeticiones: 12, series: 3, tipo: 'fuerza' },
   { fase: 'Fuerza', nombre: 'Descanso', tiempo: 30, tipo: 'descanso' },
-  { fase: 'Fuerza', nombre: 'Encogimientos de hombros', tiempo: 45, tipo: 'fuerza' },
+  { fase: 'Fuerza', nombre: 'Encogimientos de hombros', repeticiones: 15, series: 3, tipo: 'fuerza' },
   
   // CARDIO
   { fase: 'Cardio', nombre: 'Bicicleta estática', tiempo: 360, tipo: 'cardio' },
@@ -36,6 +36,29 @@ const totalExercises = ejercicios.length;
 // Objeto para almacenar los estados de los timers
 let timerStates = {};
 
+// Función para generar sonido usando Web Audio API
+function playBeep() {
+  try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.value = 800; // Frecuencia en Hz
+    oscillator.type = 'sine'; // Tipo de onda
+    
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.5);
+  } catch (error) {
+    console.log('No se pudo reproducir el sonido:', error);
+  }
+}
+
 // Generar las cards dinámicamente
 function generarTablaEjercicios() {
   const container = document.getElementById('exercisesContainer');
@@ -44,25 +67,42 @@ function generarTablaEjercicios() {
   ejercicios.forEach((ejercicio, index) => {
     const card = document.createElement('div');
     card.className = 'exercise-card';
-    
-    // Aplicar clases especiales para ejercicios de descanso
     if (ejercicio.tipo === 'descanso') {
       card.classList.add('descanso-card');
-    }    card.innerHTML = `
-      <div class="card-header">
-        <div class="fase-badge fase-${ejercicio.tipo}">${ejercicio.fase}</div>
-        <div class="timer ${ejercicio.tipo === 'descanso' ? 'descanso-timer' : ''}" data-time="${ejercicio.tiempo}">
-          ${formatearTiempo(ejercicio.tiempo)}
-        </div>
-      </div>
-      
-      <div class="exercise-name ${ejercicio.tipo === 'descanso' ? 'descanso-text' : ''}">${ejercicio.nombre}</div>
-      
-      <div class="controls-section">
+    }
+
+    // Mostrar repeticiones y series o tiempo según corresponda
+    let infoHTML = '';
+    if (ejercicio.repeticiones) {
+      const series = ejercicio.series ? `${ejercicio.series} x ` : '';
+      infoHTML = `<div class="reps-tag">${series}${ejercicio.repeticiones} repeticiones</div>`;
+    } else if (ejercicio.tiempo) {
+      infoHTML = `<div class="timer ${ejercicio.tipo === 'descanso' ? 'descanso-timer' : ''}" data-time="${ejercicio.tiempo}">
+        ${formatearTiempo(ejercicio.tiempo)}
+      </div>`;
+    }
+
+    // Botones según tipo de ejercicio
+    let controlsHTML = '';
+    if (ejercicio.repeticiones) {
+      controlsHTML = `<button class="btn-completar" onclick="completar(this)">✅ Marcar</button>`;
+    } else {
+      controlsHTML = `
         <button class="btn-iniciar" onclick="iniciar(this)">Iniciar</button>
         <button class="btn-pausa" onclick="pausar(this)" style="display: none;">⏸️</button>
         <button class="btn-detener" onclick="detener(this)" style="display: none;">⏹️</button>
         <button class="btn-completar" onclick="completar(this)">✅ Marcar</button>
+      `;
+    }
+
+    card.innerHTML = `
+      <div class="card-header">
+        <div class="fase-badge fase-${ejercicio.tipo}">${ejercicio.fase}</div>
+        ${infoHTML}
+      </div>
+      <div class="exercise-name ${ejercicio.tipo === 'descanso' ? 'descanso-text' : ''}">${ejercicio.nombre}</div>
+      <div class="controls-section">
+        ${controlsHTML}
       </div>
     `;
 
@@ -90,7 +130,12 @@ function formatearTiempo(segundos) {
 
 // Calcular y actualizar tiempo total
 function actualizarTiempoTotal() {
-  const tiempoTotalSegundos = ejercicios.reduce((total, ejercicio) => total + ejercicio.tiempo, 0);
+  const tiempoTotalSegundos = ejercicios.reduce((total, ejercicio) => {
+    if (typeof ejercicio.tiempo === 'number') {
+      return total + ejercicio.tiempo;
+    }
+    return total;
+  }, 0);
   const minutos = Math.floor(tiempoTotalSegundos / 60);
   const segundos = tiempoTotalSegundos % 60;
   const tiempoFormateado = `${minutos}:${segundos.toString().padStart(2, '0')}`;
@@ -140,8 +185,6 @@ function iniciar(btn) {
 
   const seconds = parseInt(timerCell.getAttribute("data-time"));
   let timeLeft = timerStates[cardIndex] ? timerStates[cardIndex].timeLeft : seconds;
-
-  const beep = document.getElementById("beep");
   const pausaBtn = card.querySelector('.btn-pausa');
   const detenerBtn = card.querySelector('.btn-detener');
 
@@ -183,12 +226,11 @@ function iniciar(btn) {
       // Resetear botón iniciar
       btn.disabled = false;
       btn.textContent = "Reiniciar";
-      
-      // Limpiar estado
+        // Limpiar estado
       delete timerStates[cardIndex];
       
       // Reproducir sonido
-      beep.play().catch(() => {});
+      playBeep();
       
       // Auto-completar el ejercicio
       const completarBtn = card.querySelector('.btn-completar');
@@ -219,11 +261,9 @@ function pausar(btn) {
     timerStates[cardIndex].isRunning = true;
     timerStates[cardIndex].isPaused = false;
     btn.textContent = "⏸️";
-    timerCell.classList.remove('paused');
-    timerCell.classList.add('running');
+    timerCell.classList.remove('paused');    timerCell.classList.add('running');
     iniciarBtn.textContent = "⏳ Corriendo";
     
-    const beep = document.getElementById("beep");
     let timeLeft = timerStates[cardIndex].timeLeft;
       // Crear nuevo interval para continuar desde donde se pausó
     const interval = setInterval(() => {
@@ -255,12 +295,11 @@ function pausar(btn) {
         // Resetear botón iniciar
         iniciarBtn.disabled = false;
         iniciarBtn.textContent = "Reiniciar";
-        
-        // Limpiar estado
+          // Limpiar estado
         delete timerStates[cardIndex];
         
         // Reproducir sonido
-        beep.play().catch(() => {});
+        playBeep();
           // Auto-completar el ejercicio
         const completarBtn = card.querySelector('.btn-completar');
         if (!completarBtn.classList.contains('done')) {
@@ -319,41 +358,38 @@ function completar(btn) {
   if (!wasCompleted) {
     completedExercises++;
     btn.textContent = "✅ Hecho";
-    // Agregar clase completed a la tarjeta para hacerla más oscura
     card.classList.add('completed');
   } else {
-    completedExercises--;
+    completedExercises = Math.max(0, completedExercises - 1);
     btn.textContent = "✅ Marcar";
-    // Remover clase completed de la tarjeta
     card.classList.remove('completed');
-    
     // Reset timer if uncompleting
     const cardIndex = Array.from(card.parentElement.children).indexOf(card);
     const timerCell = card.querySelector(".timer");
-    const originalTime = parseInt(timerCell.getAttribute("data-time"));
-    
-    // Detener cualquier timer en ejecución
-    if (timerStates[cardIndex]) {
-      clearInterval(timerStates[cardIndex].interval);
-      delete timerStates[cardIndex];
+    if (timerCell) {
+      const originalTime = parseInt(timerCell.getAttribute("data-time"));
+      if (timerStates[cardIndex]) {
+        clearInterval(timerStates[cardIndex].interval);
+        delete timerStates[cardIndex];
+      }
+      timerCell.textContent = formatearTiempo(originalTime);
+      timerCell.classList.remove('completed', 'running', 'paused');
+      const startBtn = card.querySelector('.btn-iniciar');
+      const pausaBtn = card.querySelector('.btn-pausa');
+      const detenerBtn = card.querySelector('.btn-detener');
+      if (startBtn) {
+        startBtn.textContent = "Iniciar";
+        startBtn.disabled = false;
+      }
+      if (pausaBtn) {
+        pausaBtn.style.display = 'none';
+        pausaBtn.textContent = "⏸️";
+      }
+      if (detenerBtn) {
+        detenerBtn.style.display = 'none';
+      }
     }
-    
-    // Resetear apariencia
-    timerCell.textContent = formatearTiempo(originalTime);
-    timerCell.classList.remove('completed', 'running', 'paused');
-    
-    // Resetear botones
-    const startBtn = card.querySelector('.btn-iniciar');
-    const pausaBtn = card.querySelector('.btn-pausa');
-    const detenerBtn = card.querySelector('.btn-detener');
-    
-    startBtn.textContent = "Iniciar";
-    startBtn.disabled = false;
-    pausaBtn.style.display = 'none';
-    detenerBtn.style.display = 'none';
-    pausaBtn.textContent = "⏸️";
   }
-  
   updateProgress();
   updateCurrentPhase();
 }
