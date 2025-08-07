@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Rutina de Hombros Interactiva</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <div class="container">
+    <h1>🏋️‍♂️ Rutina de Hombros en Casa</h1>
+    
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+    <div class="table-container">
+      <table id="rutina">
+        <thead>
+          <tr>
+            <th>Fase</th>
+            <th>Ejercicio</th>
+            <th>Tiempo</th>
+            <th>Iniciar</th>
+            <th>Control</th>
+            <th>Completado</th>
+          </tr>
+        </thead>
+        <tbody id="ejerciciosTableBody">
+          <!-- Los ejercicios se generarán dinámicamente con JavaScript -->
+        </tbody>
+      </table>
+    </div>
+
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-number" id="completedCount">0</div>
+        <div class="stat-label">Ejercicios Completados</div>
+      </div>      <div class="stat-card">
+        <div class="stat-number" id="totalTime">20:45</div>
+        <div class="stat-label">Tiempo Total</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="currentPhase">Calentamiento</div>
+        <div class="stat-label">Fase Actual</div>
+      </div>
+    </div>
+  </div>
+  <audio id="beep" src="https://www.soundjay.com/button/beep-07.wav" preload="auto"></audio>
+  <script src="script_hombros.js"></script>
+</body>
+</html>
