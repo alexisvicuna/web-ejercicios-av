@@ -36,34 +36,37 @@ const totalExercises = ejercicios.length;
 // Objeto para almacenar los estados de los timers
 let timerStates = {};
 
-// Generar la tabla dinámicamente
+// Generar las cards dinámicamente
 function generarTablaEjercicios() {
-  const tbody = document.getElementById('ejerciciosTableBody');
-  tbody.innerHTML = '';
+  const container = document.getElementById('exercisesContainer');
+  container.innerHTML = '';
 
   ejercicios.forEach((ejercicio, index) => {
-    const row = document.createElement('tr');
+    const card = document.createElement('div');
+    card.className = 'exercise-card';
     
     // Aplicar clases especiales para ejercicios de descanso
     if (ejercicio.tipo === 'descanso') {
-      row.classList.add('descanso-row');
-    }
-
-    row.innerHTML = `
-      <td class="fase-cell fase-${ejercicio.tipo}">${ejercicio.fase}</td>
-      <td class="ejercicio-cell ${ejercicio.tipo === 'descanso' ? 'descanso-text' : ''}">${ejercicio.nombre}</td>
-      <td class="timer ${ejercicio.tipo === 'descanso' ? 'descanso-timer' : ''}" data-time="${ejercicio.tiempo}">
-        ${formatearTiempo(ejercicio.tiempo)}
-      </td>
-      <td><button class="btn-iniciar" onclick="iniciar(this)">Iniciar</button></td>
-      <td>
+      card.classList.add('descanso-card');
+    }    card.innerHTML = `
+      <div class="card-header">
+        <div class="fase-badge fase-${ejercicio.tipo}">${ejercicio.fase}</div>
+        <div class="timer ${ejercicio.tipo === 'descanso' ? 'descanso-timer' : ''}" data-time="${ejercicio.tiempo}">
+          ${formatearTiempo(ejercicio.tiempo)}
+        </div>
+      </div>
+      
+      <div class="exercise-name ${ejercicio.tipo === 'descanso' ? 'descanso-text' : ''}">${ejercicio.nombre}</div>
+      
+      <div class="controls-section">
+        <button class="btn-iniciar" onclick="iniciar(this)">Iniciar</button>
         <button class="btn-pausa" onclick="pausar(this)" style="display: none;">⏸️</button>
         <button class="btn-detener" onclick="detener(this)" style="display: none;">⏹️</button>
-      </td>
-      <td><button class="btn-completar" onclick="completar(this)">✅</button></td>
+        <button class="btn-completar" onclick="completar(this)">✅ Marcar</button>
+      </div>
     `;
 
-    tbody.appendChild(row);
+    container.appendChild(card);
   });
 
   // Actualizar el tiempo total
@@ -106,12 +109,12 @@ function updateProgress() {
 
 function updateCurrentPhase() {
   const currentPhase = document.getElementById('currentPhase');
-  const rows = document.querySelectorAll('tbody tr');
+  const cards = document.querySelectorAll('.exercise-card');
   
-  for (let row of rows) {
-    const completedBtn = row.querySelector('.btn-completar');
+  for (let card of cards) {
+    const completedBtn = card.querySelector('.btn-completar');
     if (!completedBtn.classList.contains('done')) {
-      const phase = row.querySelector('.fase-cell').textContent;
+      const phase = card.querySelector('.fase-badge').textContent;
       currentPhase.textContent = phase;
       return;
     }
@@ -126,21 +129,21 @@ function formatTime(seconds) {
 }
 
 function iniciar(btn) {
-  const row = btn.parentElement.parentElement;
-  const timerCell = row.querySelector(".timer");
-  const rowIndex = Array.from(row.parentElement.children).indexOf(row);
+  const card = btn.closest('.exercise-card');
+  const timerCell = card.querySelector(".timer");
+  const cardIndex = Array.from(card.parentElement.children).indexOf(card);
   
-  // Si ya existe un timer en ejecución para esta fila, no hacer nada
-  if (timerStates[rowIndex] && timerStates[rowIndex].isRunning) {
+  // Si ya existe un timer en ejecución para esta card, no hacer nada
+  if (timerStates[cardIndex] && timerStates[cardIndex].isRunning) {
     return;
   }
 
   const seconds = parseInt(timerCell.getAttribute("data-time"));
-  let timeLeft = timerStates[rowIndex] ? timerStates[rowIndex].timeLeft : seconds;
+  let timeLeft = timerStates[cardIndex] ? timerStates[cardIndex].timeLeft : seconds;
 
   const beep = document.getElementById("beep");
-  const pausaBtn = row.querySelector('.btn-pausa');
-  const detenerBtn = row.querySelector('.btn-detener');
+  const pausaBtn = card.querySelector('.btn-pausa');
+  const detenerBtn = card.querySelector('.btn-detener');
 
   // Mostrar botones de control
   pausaBtn.style.display = 'inline-block';
@@ -154,7 +157,7 @@ function iniciar(btn) {
 
   const interval = setInterval(() => {
     // Verificar si el timer fue pausado o detenido
-    if (!timerStates[rowIndex] || !timerStates[rowIndex].isRunning) {
+    if (!timerStates[cardIndex] || !timerStates[cardIndex].isRunning) {
       clearInterval(interval);
       return;
     }
@@ -163,7 +166,7 @@ function iniciar(btn) {
     timeLeft--;
 
     // Actualizar el estado
-    timerStates[rowIndex].timeLeft = timeLeft;
+    timerStates[cardIndex].timeLeft = timeLeft;
 
     if (timeLeft < 0) {
       clearInterval(interval);
@@ -182,13 +185,13 @@ function iniciar(btn) {
       btn.textContent = "Reiniciar";
       
       // Limpiar estado
-      delete timerStates[rowIndex];
+      delete timerStates[cardIndex];
       
       // Reproducir sonido
       beep.play().catch(() => {});
       
       // Auto-completar el ejercicio
-      const completarBtn = row.querySelector('.btn-completar');
+      const completarBtn = card.querySelector('.btn-completar');
       if (!completarBtn.classList.contains('done')) {
         completar(completarBtn);
       }
@@ -196,7 +199,7 @@ function iniciar(btn) {
   }, 1000);
 
   // Guardar el estado del timer
-  timerStates[rowIndex] = {
+  timerStates[cardIndex] = {
     interval: interval,
     timeLeft: timeLeft,
     isRunning: true,
@@ -205,29 +208,27 @@ function iniciar(btn) {
 }
 
 function pausar(btn) {
-  const row = btn.parentElement.parentElement;
-  const rowIndex = Array.from(row.parentElement.children).indexOf(row);
-  const timerCell = row.querySelector(".timer");
-  const iniciarBtn = row.querySelector('.btn-iniciar');
+  const card = btn.closest('.exercise-card');
+  const cardIndex = Array.from(card.parentElement.children).indexOf(card);
+  const timerCell = card.querySelector(".timer");
+  const iniciarBtn = card.querySelector('.btn-iniciar');
 
-  if (!timerStates[rowIndex]) return;
-
-  if (timerStates[rowIndex].isPaused) {
+  if (!timerStates[cardIndex]) return;
+  if (timerStates[cardIndex].isPaused) {
     // Reanudar - crear nuevo interval con el tiempo restante
-    timerStates[rowIndex].isRunning = true;
-    timerStates[rowIndex].isPaused = false;
+    timerStates[cardIndex].isRunning = true;
+    timerStates[cardIndex].isPaused = false;
     btn.textContent = "⏸️";
     timerCell.classList.remove('paused');
     timerCell.classList.add('running');
     iniciarBtn.textContent = "⏳ Corriendo";
     
     const beep = document.getElementById("beep");
-    let timeLeft = timerStates[rowIndex].timeLeft;
-    
-    // Crear nuevo interval para continuar desde donde se pausó
+    let timeLeft = timerStates[cardIndex].timeLeft;
+      // Crear nuevo interval para continuar desde donde se pausó
     const interval = setInterval(() => {
       // Verificar si el timer fue pausado o detenido
-      if (!timerStates[rowIndex] || !timerStates[rowIndex].isRunning) {
+      if (!timerStates[cardIndex] || !timerStates[cardIndex].isRunning) {
         clearInterval(interval);
         return;
       }
@@ -236,7 +237,7 @@ function pausar(btn) {
       timeLeft--;
 
       // Actualizar el estado
-      timerStates[rowIndex].timeLeft = timeLeft;
+      timerStates[cardIndex].timeLeft = timeLeft;
 
       if (timeLeft < 0) {
         clearInterval(interval);
@@ -245,10 +246,9 @@ function pausar(btn) {
         timerCell.textContent = "✅ Completado";
         timerCell.classList.remove('running');
         timerCell.classList.add('completed');
-        
-        // Ocultar botones de control
-        const pausaBtn = row.querySelector('.btn-pausa');
-        const detenerBtn = row.querySelector('.btn-detener');
+          // Ocultar botones de control
+        const pausaBtn = card.querySelector('.btn-pausa');
+        const detenerBtn = card.querySelector('.btn-detener');
         pausaBtn.style.display = 'none';
         detenerBtn.style.display = 'none';
         
@@ -257,13 +257,12 @@ function pausar(btn) {
         iniciarBtn.textContent = "Reiniciar";
         
         // Limpiar estado
-        delete timerStates[rowIndex];
+        delete timerStates[cardIndex];
         
         // Reproducir sonido
         beep.play().catch(() => {});
-        
-        // Auto-completar el ejercicio
-        const completarBtn = row.querySelector('.btn-completar');
+          // Auto-completar el ejercicio
+        const completarBtn = card.querySelector('.btn-completar');
         if (!completarBtn.classList.contains('done')) {
           completar(completarBtn);
         }
@@ -271,12 +270,11 @@ function pausar(btn) {
     }, 1000);
 
     // Actualizar el interval en el estado
-    timerStates[rowIndex].interval = interval;
-    
-  } else {
+    timerStates[cardIndex].interval = interval;
+      } else {
     // Pausar
-    timerStates[rowIndex].isRunning = false;
-    timerStates[rowIndex].isPaused = true;
+    timerStates[cardIndex].isRunning = false;
+    timerStates[cardIndex].isPaused = true;
     btn.textContent = "▶️";
     timerCell.classList.remove('running');
     timerCell.classList.add('paused');
@@ -285,16 +283,16 @@ function pausar(btn) {
 }
 
 function detener(btn) {
-  const row = btn.parentElement.parentElement;
-  const rowIndex = Array.from(row.parentElement.children).indexOf(row);
-  const timerCell = row.querySelector(".timer");
-  const iniciarBtn = row.querySelector('.btn-iniciar');
-  const pausaBtn = row.querySelector('.btn-pausa');
+  const card = btn.closest('.exercise-card');
+  const cardIndex = Array.from(card.parentElement.children).indexOf(card);
+  const timerCell = card.querySelector(".timer");
+  const iniciarBtn = card.querySelector('.btn-iniciar');
+  const pausaBtn = card.querySelector('.btn-pausa');
 
   // Limpiar el timer si existe
-  if (timerStates[rowIndex]) {
-    clearInterval(timerStates[rowIndex].interval);
-    delete timerStates[rowIndex];
+  if (timerStates[cardIndex]) {
+    clearInterval(timerStates[cardIndex].interval);
+    delete timerStates[cardIndex];
   }
 
   // Resetear la celda del timer
@@ -314,25 +312,30 @@ function detener(btn) {
 
 function completar(btn) {
   const wasCompleted = btn.classList.contains("done");
+  const card = btn.closest('.exercise-card');
+  
   btn.classList.toggle("done");
   
   if (!wasCompleted) {
     completedExercises++;
     btn.textContent = "✅ Hecho";
+    // Agregar clase completed a la tarjeta para hacerla más oscura
+    card.classList.add('completed');
   } else {
     completedExercises--;
-    btn.textContent = "✅";
+    btn.textContent = "✅ Marcar";
+    // Remover clase completed de la tarjeta
+    card.classList.remove('completed');
     
     // Reset timer if uncompleting
-    const row = btn.parentElement.parentElement;
-    const rowIndex = Array.from(row.parentElement.children).indexOf(row);
-    const timerCell = row.querySelector(".timer");
+    const cardIndex = Array.from(card.parentElement.children).indexOf(card);
+    const timerCell = card.querySelector(".timer");
     const originalTime = parseInt(timerCell.getAttribute("data-time"));
     
     // Detener cualquier timer en ejecución
-    if (timerStates[rowIndex]) {
-      clearInterval(timerStates[rowIndex].interval);
-      delete timerStates[rowIndex];
+    if (timerStates[cardIndex]) {
+      clearInterval(timerStates[cardIndex].interval);
+      delete timerStates[cardIndex];
     }
     
     // Resetear apariencia
@@ -340,9 +343,9 @@ function completar(btn) {
     timerCell.classList.remove('completed', 'running', 'paused');
     
     // Resetear botones
-    const startBtn = row.querySelector('.btn-iniciar');
-    const pausaBtn = row.querySelector('.btn-pausa');
-    const detenerBtn = row.querySelector('.btn-detener');
+    const startBtn = card.querySelector('.btn-iniciar');
+    const pausaBtn = card.querySelector('.btn-pausa');
+    const detenerBtn = card.querySelector('.btn-detener');
     
     startBtn.textContent = "Iniciar";
     startBtn.disabled = false;
